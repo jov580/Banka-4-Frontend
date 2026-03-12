@@ -23,11 +23,12 @@ export default function EmployeeDetails() {
     [id]
   );
 
-  const [editMode,   setEditMode]   = useState(false);
-  const [form,       setForm]       = useState(null);
-  const [errors,     setErrors]     = useState({});
-  const [apiError,   setApiError]   = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [editMode,     setEditMode]     = useState(false);
+  const [form,         setForm]         = useState(null);
+  const [originalForm, setOriginalForm] = useState(null);
+  const [errors,       setErrors]       = useState({});
+  const [apiError,     setApiError]     = useState(null);
+  const [submitting,   setSubmitting]   = useState(false);
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -44,7 +45,7 @@ export default function EmployeeDetails() {
 
   function startEdit() {
     const emp = data.data;
-    setForm({
+    const initial = {
       first_name:    emp.first_name ?? '',
       last_name:     emp.last_name ?? '',
       email:         emp.email ?? '',
@@ -55,7 +56,9 @@ export default function EmployeeDetails() {
       active:        emp.active ?? true,
       position_id:   emp.position_id ?? '',
       department:    emp.department ?? '',
-    });
+    };
+    setForm(initial);
+    setOriginalForm(initial);
     setErrors({});
     setApiError(null);
     setEditMode(true);
@@ -91,10 +94,20 @@ export default function EmployeeDetails() {
   async function handleSave(e) {
     e.preventDefault();
     if (!validate()) return;
+
+    const diff = {};
+    for (const key of Object.keys(form)) {
+      if (form[key] !== originalForm[key]) diff[key] = form[key];
+    }
+    if (Object.keys(diff).length === 0) {
+      setEditMode(false);
+      return;
+    }
+
     setSubmitting(true);
     setApiError(null);
     try {
-      await employeesApi.update(id, form);
+      await employeesApi.update(id, diff);
       setEditMode(false);
       refetch();
     } catch (err) {
