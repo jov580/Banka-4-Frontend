@@ -11,8 +11,8 @@ export default function Navbar() {
   const logout   = useAuthStore(s => s.logout);
   const { can, canAny } = usePermissions();
 
-  const [showMenu,     setShowMenu]     = useState(false);
-  const [showPwModal,  setShowPwModal]  = useState(false);
+  const [showMenu,    setShowMenu]    = useState(false);
+  const [showPwModal, setShowPwModal] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -61,12 +61,22 @@ export default function Navbar() {
               Zaposleni
             </NavLink>
           )}
+
           <NavLink
             to="/clients"
             className={({ isActive }) => `${styles.navLink} ${isActive ? styles.active : ''}`}
           >
             Klijenti
           </NavLink>
+
+          {can('account.create') && (
+            <NavLink
+              to="/accounts/new"
+              className={({ isActive }) => `${styles.navLink} ${isActive ? styles.active : ''}`}
+            >
+              Novi račun
+            </NavLink>
+          )}
         </div>
 
         <div className={styles.right}>
