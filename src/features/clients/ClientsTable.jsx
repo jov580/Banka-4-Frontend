@@ -1,14 +1,5 @@
 import styles from './ClientsTable.module.css';
 
-/**
- * Tabela klijenata u ClientsPortal.
- * Klik na red otvara ClientEditForm u parent komponenti.
- *
- * Props:
- *   clients     — niz klijent objekata
- *   selectedId  — ID trenutno selektovanog klijenta (za highlight)
- *   onSelect(client) — callback kada korisnik klikne na red
- */
 export default function ClientsTable({ clients, selectedId, onSelect }) {
   if (clients.length === 0) {
     return (

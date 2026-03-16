@@ -54,7 +54,6 @@
   vertical-align: middle;
 }
 
-/* Fix left padding on active row due to border-left */
 .rowActive td:first-child { padding-left: 13px; }
 
 .name {
