@@ -4,6 +4,19 @@ const DELAY = 600;
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
+const FAKE_CLIENTS = [
+  { id: 1,  first_name: 'Marija',     last_name: 'Ković',     email: 'marija.kovic@raf.rs',      phone: '+381601234567', address: 'Knez Mihailova 10, Beograd',      active: true  },
+  { id: 2,  first_name: 'Nikola',     last_name: 'Savić',     email: 'nikola.savic@raf.rs',       phone: '+381602345678', address: 'Bulevar Oslobođenja 5, Novi Sad', active: true  },
+  { id: 3,  first_name: 'Jelena',     last_name: 'Milić',     email: 'jelena.milic@raf.rs',     phone: '+381603456789', address: 'Nemanjina 15, Beograd',           active: true  },
+  { id: 4,  first_name: 'Stefan',     last_name: 'Đorđević',  email: 'stefan.djordjevic@raf.rs',  phone: '+381604567890', address: 'Cara Dušana 20, Kragujevac',      active: false },
+  { id: 5,  first_name: 'Ana',        last_name: 'Todorović', email: 'ana.todorovic@raf.rs',      phone: '+381605678901', address: 'Terazije 8, Beograd',             active: true  },
+  { id: 6,  first_name: 'Miloš',      last_name: 'Petrović',  email: 'milos.petrovic@raf.rs',     phone: '+381606789012', address: 'Savska 30, Beograd',              active: true  },
+  { id: 7,  first_name: 'Ivana',      last_name: 'Jovanović', email: 'ivana.jovanovic@raf.rs',    phone: '+381607890123', address: 'Vojvode Stepe 42, Beograd',       active: true  },
+  { id: 8,  first_name: 'Aleksandar', last_name: 'Nikolić',   email: 'aleksandar.nikolic@raf.rs',       phone: '+381608901234', address: 'Balkanska 12, Beograd',           active: false },
+  { id: 9,  first_name: 'Maja',       last_name: 'Stanković', email: 'maja.stankovic@raf.rs',     phone: '+381609012345', address: 'Obilićev venac 4, Beograd',       active: true  },
+  { id: 10, first_name: 'Vladimir',   last_name: 'Marković',  email: 'vladimir.markovic@raf.rs',    phone: '+381610123456', address: 'Makedonska 22, Beograd',          active: true  },
+];
+
 const FAKE_EMPLOYEE = {
   employee_id:   1,
   first_name:    'Petar',
@@ -47,6 +60,54 @@ api.interceptors.request.use(async config => {
       });
     }
     return throwFakeError(config, 401, 'Pogrešan username ili lozinka.');
+  }
+
+  // CLIENT LOGIN
+  if (method === 'post' && path === '/client/login') {
+    if (data.email && data.password) {
+      const client = FAKE_CLIENTS.find(c => c.email === data.email);
+      if (client && data.password) { // U produkciji bi se proveravala prava lozinka
+        return throwFakeResponse(config, {
+          user: {
+            id: client.id,
+            first_name: client.first_name,
+            last_name: client.last_name,
+            email: client.email,
+            phone: client.phone,
+            address: client.address,
+            role: 'client' // Važno: označava da je klijent
+          },
+          token: 'fake-client-jwt-token-456',
+          refresh_token: 'fake-client-refresh-token-789'
+        });
+      }
+    }
+    return throwFakeError(config, 401, 'Pogrešan email ili lozinka.');
+  }
+
+  // EMPLOYEE LOGIN (stari endpoint koji vraća employee podatke)
+  if (method === 'post' && path === '/login') {
+    if (data.email && data.password) {
+      const employee = FAKE_EMPLOYEES.find(e => e.email === data.email);
+      if (employee && data.password) {
+        return throwFakeResponse(config, {
+          user: {
+            employee_id: employee.employee_id,
+            first_name: employee.first_name,
+            last_name: employee.last_name,
+            email: employee.email,
+            username: employee.username,
+            position_id: employee.position_id,
+            department: employee.department,
+            role: 'employee', // Važno: označava da je zaposleni
+            permissions: ['employee.view', 'employee.create', 'employee.edit', 'employee.delete', 'client.view']
+          },
+          token: 'fake-employee-jwt-token-123',
+          refresh_token: 'fake-employee-refresh-token-456'
+        });
+      }
+    }
+    return throwFakeError(config, 401, 'Pogrešan email ili lozinka.');
   }
 
   if (method === 'post' && path === '/auth/register') {
@@ -127,6 +188,73 @@ api.interceptors.request.use(async config => {
       page_size:   pageSize,
       total_pages: Math.ceil(filtered.length / pageSize),
     });
+  }
+
+  // ── CLIENTS API ──────────────────────────────────────────────
+  if (method === 'get' && path === '/clients') {
+    let filtered = [...FAKE_CLIENTS];
+    if (params?.email)      filtered = filtered.filter(c => c.email.toLowerCase().includes(params.email.toLowerCase()));
+    if (params?.first_name) filtered = filtered.filter(c => c.first_name.toLowerCase().includes(params.first_name.toLowerCase()));
+    if (params?.last_name)  filtered = filtered.filter(c => c.last_name.toLowerCase().includes(params.last_name.toLowerCase()));
+
+    const page      = Number(params?.page)      || 1;
+    const pageSize  = Number(params?.page_size)  || 20;
+    const start     = (page - 1) * pageSize;
+    const sliced    = filtered.slice(start, start + pageSize);
+    return throwFakeResponse(config, {
+      data:        sliced,
+      total:       filtered.length,
+      page,
+      page_size:   pageSize,
+      total_pages: Math.ceil(filtered.length / pageSize),
+    });
+  }
+
+  const clientIdMatch = path.match(/^\/clients\/(\d+)$/);
+  if (method === 'get' && clientIdMatch) {
+    const client = FAKE_CLIENTS.find(c => c.id === Number(clientIdMatch[1]));
+    if (client) return throwFakeResponse(config, { data: client });
+    return throwFakeError(config, 404, 'Klijent nije pronađen.');
+  }
+
+  // ── CLIENT PORTAL API ────────────────────────────────────────
+  if (method === 'get' && path === '/client/accounts') {
+    const fakeAccounts = [
+      { id: 1, name: 'Tekući račun (RSD)', number: '160-0000000001-82', currency: 'RSD', balance: 125450.50, type: 'checking' },
+      { id: 2, name: 'Devizni račun (EUR)', number: '160-0000000002-83', currency: 'EUR', balance: 3200.00, type: 'foreign' },
+      { id: 3, name: 'Štedni račun (RSD)', number: '160-0000000003-84', currency: 'RSD', balance: 50000.00, type: 'savings' }
+    ];
+    return throwFakeResponse(config, { data: fakeAccounts });
+  }
+
+  if (method === 'get' && path === '/client/transactions') {
+    const fakeTransactions = [
+      { id: 1, description: 'Plata za Februar 2025', date: '2025-02-28', amount: 85000, type: 'credit', account_id: 1 },
+      { id: 2, description: 'Plaćanje - Telekom Srbija', date: '2025-03-05', amount: 3500, type: 'debit', account_id: 1 },
+      { id: 3, description: 'Uplata sa tekućeg', date: '2025-03-10', amount: 10000, type: 'credit', account_id: 3 },
+      { id: 4, description: 'Podizanje gotovine - Bankomat', date: '2025-03-12', amount: 5000, type: 'debit', account_id: 1 },
+      { id: 5, description: 'Konverzija EUR → RSD', date: '2025-03-15', amount: 12300, type: 'credit', account_id: 1 }
+    ];
+    return throwFakeResponse(config, { data: fakeTransactions });
+  }
+
+  if (method === 'get' && path === '/client/recipients') {
+    const fakeRecipients = [
+      { id: 1, name: 'Elektrodistribucija Srbije', initials: 'ED', account: '160-0001111111-11' },
+      { id: 2, name: 'Telekom Srbija', initials: 'TS', account: '160-0002222222-22' },
+      { id: 3, name: 'SBB Internet', initials: 'SB', account: '160-0003333333-33' },
+      { id: 4, name: 'Stambena Zajednica', initials: 'SZ', account: '160-0004444444-44' }
+    ];
+    return throwFakeResponse(config, { data: fakeRecipients });
+  }
+
+  if (method === 'get' && path === '/client/rates') {
+    const fakeRates = [
+      { currency: 'EUR', buy: 116.50, sell: 117.50 },
+      { currency: 'USD', buy: 105.20, sell: 106.80 },
+      { currency: 'CHF', buy: 128.40, sell: 130.00 }
+    ];
+    return throwFakeResponse(config, { data: fakeRates });
   }
 
   return config;
