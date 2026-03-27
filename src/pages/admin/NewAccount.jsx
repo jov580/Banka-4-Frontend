@@ -241,15 +241,23 @@ export default function NewAccount() {
       // Create company first for business accounts
       let companyId = null;
       if (isBusiness) {
-        const createdCompany = await companiesApi.create({
-          name:                companyData.company_name.trim(),
-          registration_number: companyData.registration_number,
-          tax_number:          companyData.pib,
-          work_code_id:        Number(companyData.work_code_id),
-          address:             companyData.address.trim(),
-          owner_id:            clientId,
-        });
-        companyId = createdCompany?.id ?? createdCompany?.data?.id ?? createdCompany?.ID;
+        try {
+          const createdCompany = await companiesApi.create({
+            name:                companyData.company_name.trim(),
+            registration_number: companyData.registration_number,
+            tax_number:          companyData.pib,
+            work_code_id:        Number(companyData.work_code_id),
+            address:             companyData.address.trim(),
+            owner_id:            clientId,
+          });
+          companyId = createdCompany?.id ?? createdCompany?.data?.id ?? createdCompany?.ID;
+        } catch (companyErr) {
+          const status = companyErr?.status ?? companyErr?.response?.status;
+          if (status === 409) {
+            throw new Error('Firma sa unetim matičnim brojem ili PIB-om već postoji. Izmenite podatke firme ili odaberite drugu kombinaciju.');
+          }
+          throw companyErr;
+        }
       }
 
       let apiPayload = {
